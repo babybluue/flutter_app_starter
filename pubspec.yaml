@@ -1,4 +1,4 @@
-name: flutter_apk_starter
+name: flutter_starter
 description: 'A new Flutter project.'
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -52,9 +52,11 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 
 flutter_launcher_icons:
-  android: 'launcher_icon'
-  ios: true
   image_path: 'lib/assets/icon/icon.jpg'
+  adaptive_icon_background: '#ffffff'
+  adaptive_icon_foreground: 'lib/assets/icon/icon.jpg'
+  android: true
+  ios: true
   min_sdk_android: 21 # android min sdk min:16, default 21
   web:
     generate: true
@@ -70,13 +72,10 @@ flutter_launcher_icons:
     image_path: 'lib/assets/icon/icon.jpg'
 
 flutter_native_splash:
-  color_android: '#42a5f5'
-  color_dark_android: '#042a49'
-  color_ios: '#42a5f5'
-  color_dark_ios: '#042a49'
-  color_web: '#42a5f5'
-  color_dark_web: '#042a49'
-
+  color_android: '#ffffff'
+  image_android: 'lib/assets/icon/icon.jpg'
+  ios: false
+  web: false
 # The following section is specific to Flutter packages.
 flutter:
   # The following line ensures that the Material Icons font is
