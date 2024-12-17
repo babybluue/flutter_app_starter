@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
+import 'dart:typed_data';
 
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothScreen extends StatefulWidget {
   const BluetoothScreen({super.key});
@@ -20,6 +19,7 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
   final CentralManager _manager = CentralManager();
   final List<DiscoveredEventArgs> _discoveries = [];
   bool _discovering = false;
+  bool _advertising = false;
 
   void checkBluetooth() async {
     _stateChangedSubscription = _manager.stateChanged.listen((event) async {
@@ -68,20 +68,33 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
     });
   }
 
-  void startAdvertising() {
-    final advertisementData = AdvertisementData(
-      advName: 'test-flutter',
-      connectable: true,
-      manufacturerData: {
-        1234: [0x01, 0x02, 0x03]
-      },
-      serviceData: {
-        Guid('0000180D-0000-1000-8000-00805F9B34FB'): [0x01, 0x02, 0x03]
-      },
-      serviceUuids: [Guid('0000180D-0000-1000-8000-00805F9B34FB')],
-      txPowerLevel: null,
-      appearance: null,
-    );
+  Future<void> startAdvertising() async {
+    if (_advertising) {
+      return;
+    }
+
+    await _peripheralManager.removeAllServices();
+
+    final advertisement =
+        Advertisement(name: 'flutter-app', manufacturerSpecificData: [
+      ManufacturerSpecificData(
+          id: 0x1d9e2, data: Uint8List.fromList([0x01, 0x02, 0x03]))
+    ], serviceUUIDs: [
+      UUID.short(16),
+    ], serviceData: {
+      UUID.short(16): Uint8List.fromList([0x01, 0x02, 0x03])
+    });
+
+    await _peripheralManager.startAdvertising(advertisement);
+    _advertising = true;
+  }
+
+  Future<void> stopAdvertising() async {
+    if (!_advertising) {
+      return;
+    }
+    await _peripheralManager.stopAdvertising();
+    _advertising = false;
   }
 
   @override
@@ -114,6 +127,12 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
               child: const Text('Start Scanning')),
           TextButton(
               onPressed: () => stopDiscovery(), child: const Text('Clear')),
+          TextButton(
+              onPressed: () => startAdvertising(),
+              child: const Text(' Start Advertise')),
+          TextButton(
+              onPressed: () => stopAdvertising(),
+              child: const Text('Stop Advertise')),
           Expanded(
               child: ListView(
             children: [
