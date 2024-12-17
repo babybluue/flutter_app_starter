@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
+import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -12,80 +14,86 @@ class BluetoothScreen extends StatefulWidget {
 }
 
 class _BluetoothScreenState extends State<BluetoothScreen> {
-  BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
-
-  late StreamSubscription<BluetoothAdapterState> _adapterStateStateSubscription;
-  late List<ScanResult> scanResult = [];
+  late final StreamSubscription _stateChangedSubscription;
+  late final StreamSubscription _discoveredSubscription;
+  final PeripheralManager _peripheralManager = PeripheralManager();
+  final CentralManager _manager = CentralManager();
+  final List<DiscoveredEventArgs> _discoveries = [];
+  bool _discovering = false;
 
   void checkBluetooth() async {
-    if (await FlutterBluePlus.isSupported == false) {
-      print('Bluetooth is not supported');
+    _stateChangedSubscription = _manager.stateChanged.listen((event) async {
+      if (event.state == BluetoothLowEnergyState.unauthorized &&
+          Platform.isAndroid) {
+        await _manager.authorize();
+      }
+    });
+
+    // _peripheralManager
+    //     .startAdvertising(Advertisement(name: 'flutter-test', serviceData: {
+    //   Guid('0000180D-0000-1000-8000-00805F9B34FB'): [0x01, 0x02, 0x03]
+    // }));
+
+    _discoveredSubscription = _manager.discovered.listen((event) async {
+      final peripheral = event.peripheral;
+
+      final index = _discoveries.indexWhere((i) => i.peripheral == peripheral);
+      if (index < 0) {
+        _discoveries.add(event);
+      } else {
+        _discoveries[index] = event;
+      }
+      setState(() {});
+    });
+  }
+
+  Future<void> startDiscovery() async {
+    if (_discovering) {
       return;
     }
-
-    _adapterStateStateSubscription = FlutterBluePlus.adapterState
-        .listen((BluetoothAdapterState state) async {
-      if (state == BluetoothAdapterState.on) {
-        print('Bluetooth is on');
-      } else {
-        print('Bluetooth is off');
-      }
-    });
+    _discoveries.clear();
+    await _manager.startDiscovery();
+    _discovering = true;
   }
 
-  void scanDevices() async {
-    var bluetoothScan = FlutterBluePlus.onScanResults.listen((results) {
-      if (results.isNotEmpty) {
-        setState(() {
-          if (!scanResult.contains(results.last)) {
-            scanResult.add(results.last);
-          }
-        });
-      }
-    });
+  Future<void> stopDiscovery() async {
+    if (!_discovering) {
+      return;
+    }
+    await _manager.stopDiscovery();
+    _discovering = false;
 
-    FlutterBluePlus.cancelWhenScanComplete(bluetoothScan);
-  }
-
-  void startScan() async {
-    FlutterBluePlus.startScan(
-        // withServices: [Guid('180F')],
-        // removeIfGone: Duration(seconds: 1),
-        timeout: const Duration(seconds: 20));
-    scanDevices();
-  }
-
-  void clearResult() {
     setState(() {
-      scanResult = [];
+      _discoveries.clear();
     });
   }
 
   void startAdvertising() {
     final advertisementData = AdvertisementData(
-        advName: 'test-flutter',
-        connectable: true,
-        manufacturerData: {
-          1234: [0x01, 0x02, 0x03]
-        },
-        serviceData: {
-          Guid('0000180D-0000-1000-8000-00805F9B34FB'): [0x01, 0x02, 0x03]
-        },
-        serviceUuids: [
-          Guid('0000180D-0000-1000-8000-00805F9B34FB')
-        ]);
+      advName: 'test-flutter',
+      connectable: true,
+      manufacturerData: {
+        1234: [0x01, 0x02, 0x03]
+      },
+      serviceData: {
+        Guid('0000180D-0000-1000-8000-00805F9B34FB'): [0x01, 0x02, 0x03]
+      },
+      serviceUuids: [Guid('0000180D-0000-1000-8000-00805F9B34FB')],
+      txPowerLevel: null,
+      appearance: null,
+    );
   }
 
   @override
   void initState() {
     super.initState();
-    FlutterBluePlus.setLogLevel(LogLevel.verbose);
     checkBluetooth();
   }
 
   @override
   void dispose() {
-    _adapterStateStateSubscription.cancel();
+    _stateChangedSubscription.cancel();
+    _discoveredSubscription.cancel();
     super.dispose();
   }
 
@@ -102,14 +110,14 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
               onPressed: () => checkBluetooth(),
               child: const Text('Check Bluetooth')),
           TextButton(
-              onPressed: () => startScan(),
+              onPressed: () => startDiscovery(),
               child: const Text('Start Scanning')),
           TextButton(
-              onPressed: () => clearResult(), child: const Text('Clear')),
+              onPressed: () => stopDiscovery(), child: const Text('Clear')),
           Expanded(
               child: ListView(
             children: [
-              for (final result in scanResult)
+              for (final discovery in _discoveries)
                 GestureDetector(
                   onTap: () async {
                     //
@@ -123,22 +131,28 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                         SizedBox(
                           width: 40,
                           child: Text(
-                            result.rssi.toString(),
+                            discovery.rssi.toString(),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         SizedBox(
-                            width: 120,
-                            child: Text(result.device.remoteId.toString(),
+                            child: Text(
+                                discovery.advertisement.manufacturerSpecificData
+                                    .toString(),
                                 overflow: TextOverflow.ellipsis)),
-                        SizedBox(
-                            width: 120,
-                            child: Text(result.device.advName,
-                                overflow: TextOverflow.ellipsis)),
-                        SizedBox(
-                            width: 40,
-                            child: Text(result.device.isConnected.toString(),
-                                overflow: TextOverflow.ellipsis)),
+                        // SizedBox(
+                        //     width: 120,
+                        //     child: Text(
+                        //         discovery.advertisement.name != null
+                        //             ? discovery.advertisement.name.toString()
+                        //             : '',
+                        //         overflow: TextOverflow.ellipsis)),
+                        // SizedBox(
+                        //   width: 40,
+                        //   child: Text(
+                        //       discovery.advertisement.serviceUUIDs.toString(),
+                        //       overflow: TextOverflow.ellipsis),
+                        // ),
                       ],
                     ),
                   ),
