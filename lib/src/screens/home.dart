@@ -27,6 +27,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                 child: Text('Bluetooth')),
+            TextButton(
+                onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AppRoutes.cameraScreen(),
+                      ),
+                    ),
+                child: Text('Camera')),
           ],
         ),
       ),

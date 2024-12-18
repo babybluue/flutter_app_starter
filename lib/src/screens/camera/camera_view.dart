@@ -14,12 +14,44 @@ class _CameraScreenState extends State<CameraScreen> {
   late CameraController? _cameraControllerFront;
 
   @override
-  void initState() async {
+  void initState() {
     // TODO: implement initState
     super.initState();
+    initializeCamera();
+  }
+
+  void initializeCamera() async {
     _cameras = await availableCameras();
-    _cameraControllerBack = CameraController([], ResolutionPreset.max);
-    _cameraControllerFront = CameraController([], ResolutionPreset.max);
+    final frontCamera = _cameras.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.front);
+    final backCamera = _cameras.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back);
+    print(_cameras);
+    _cameraControllerBack = CameraController(backCamera, ResolutionPreset.high);
+    _cameraControllerFront =
+        CameraController(frontCamera, ResolutionPreset.max);
+
+    await _cameraControllerBack?.initialize();
+    await _cameraControllerFront?.initialize();
+    setState(() {});
+  }
+
+  @override
+  void dispose() async {
+    _cameraControllerBack?.stopImageStream();
+    _cameraControllerFront?.stopImageStream();
+    _cameraControllerBack?.dispose();
+    _cameraControllerFront?.dispose();
+    super.dispose();
+  }
+
+  void startCamera() {
+    // _cameraControllerBack?.startImageStream((image) {
+    //   // TODO: process image
+    // });
+    // _cameraControllerFront?.startImageStream((image) {
+    //   // TODO: process image
+    // });
   }
 
   @override
@@ -31,8 +63,27 @@ class _CameraScreenState extends State<CameraScreen> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          TextButton(onPressed: null, child: const Text('Open Camera')),
+          TextButton(
+              onPressed: () => startCamera(), child: const Text('Open Camera')),
           TextButton(onPressed: null, child: const Text('Start Scanning')),
+          Expanded(
+            child: Stack(
+              children: [
+                if (_cameraControllerBack!.value.isInitialized)
+                  SizedBox(
+                    width: 300,
+                    height: 400,
+                    child: CameraPreview(_cameraControllerBack!),
+                  ),
+                // if (_cameraControllerFront!.value.isInitialized)
+                //   SizedBox(
+                //     width: 300,
+                //     height: 400,
+                //     child: CameraPreview(_cameraControllerFront!),
+                //   ),
+              ],
+            ),
+          )
         ],
       ),
     );
