@@ -142,39 +142,53 @@ class _BluetoothScreenState extends State<BluetoothScreen> {
                     //
                   },
                   child: Padding(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Text(
-                            discovery.rssi.toString(),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                            border: const BorderDirectional(
+                                bottom: BorderSide(color: Colors.grey))),
+                        child: Flex(
+                          direction: Axis.vertical,
+                          children: [
+                            Flex(
+                              direction: Axis.horizontal,
+                              mainAxisSize: MainAxisSize.max,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(discovery.advertisement.name ?? 'N/A'),
+                                Text(discovery.rssi.toString())
+                              ],
+                            ),
+                            for (final spec in discovery
+                                .advertisement.manufacturerSpecificData)
+                              Flex(
+                                direction: Axis.horizontal,
+                                spacing: 10,
+                                children: [
+                                  Text(
+                                    '0x${spec.id.toRadixString(16)}',
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      spec.data
+                                          .map(
+                                            (e) => e.toRadixString(16),
+                                          )
+                                          .join('-'),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  )
+                                ],
+                              ),
+                            Flex(direction: Axis.horizontal, children: [
+                              for (final uuid
+                                  in discovery.advertisement.serviceUUIDs)
+                                Text(uuid.value.toString())
+                            ])
+                          ],
                         ),
-                        SizedBox(
-                            child: Text(
-                                discovery.advertisement.manufacturerSpecificData
-                                    .toString(),
-                                overflow: TextOverflow.ellipsis)),
-                        // SizedBox(
-                        //     width: 120,
-                        //     child: Text(
-                        //         discovery.advertisement.name != null
-                        //             ? discovery.advertisement.name.toString()
-                        //             : '',
-                        //         overflow: TextOverflow.ellipsis)),
-                        // SizedBox(
-                        //   width: 40,
-                        //   child: Text(
-                        //       discovery.advertisement.serviceUUIDs.toString(),
-                        //       overflow: TextOverflow.ellipsis),
-                        // ),
-                      ],
-                    ),
-                  ),
+                      )),
                 ),
             ],
           ))
